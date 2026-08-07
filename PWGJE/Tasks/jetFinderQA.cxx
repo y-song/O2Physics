@@ -47,7 +47,6 @@
 using namespace o2;
 using namespace o2::framework;
 using namespace o2::framework::expressions;
-
 struct JetFinderQATask {
 
   HistogramRegistry registry;
@@ -425,6 +424,7 @@ struct JetFinderQATask {
       registry.add("h_collisions_njets", "N_{jets};", {HistType::kTH1F, {{10000, 0.0, 10000.0}}}, doSumw2);
 
       registry.add("h2_centrality_ntracks", "; centrality; N_{tracks};", {HistType::kTH2F, {{1100, 0., 110.0}, {10000, 0.0, 10000.0}}});
+      registry.add("h2_runnumber_ntracks", "; run number; N_{tracks}", {HistType::kTH2F, {{1000, 0., 1000.0}, {10000, 0.0, 10000.0}}});
       registry.add("h2_centrality_njets", "; centrality; N_{jets};", {HistType::kTH2F, {{1100, 0., 110.0}, {10000, 0.0, 10000.0}}});
       registry.add("h2_ntracks_rho", "; N_{tracks}; #it{rho} (GeV/area);", {HistType::kTH2F, {{10000, 0.0, 10000.0}, {400, 0.0, 400.0}}});
       registry.add("h2_centrality_rho", "; centrality; #it{rho} (GeV/area);", {HistType::kTH2F, {{1100, 0., 110.}, {400, 0., 400.0}}});
@@ -929,7 +929,7 @@ struct JetFinderQATask {
         registry.fill(HIST("h_collisions_weighted"), 2.5, eventWeight);
     }
 
-    if (collision.trackOccupancyInTimeRange() < trackOccupancyInTimeRangeMin || trackOccupancyInTimeRangeMax < collision.trackOccupancyInTimeRange()) {
+    if (static_cast<o2::aod::jcollision::TrackOccupancyInTimeRange const&>(collision).trackOccupancyInTimeRange() < trackOccupancyInTimeRangeMin || trackOccupancyInTimeRangeMax < static_cast<o2::aod::jcollision::TrackOccupancyInTimeRange const&>(collision).trackOccupancyInTimeRange()) {
       return false;
     }
     if (fillHistograms) {
@@ -1495,6 +1495,7 @@ struct JetFinderQATask {
   void processQcMultCutCheck(soa::Filtered<soa::Join<aod::JetCollisions, aod::BkgChargedRhos, aod::JMcCollisionLbs>>::iterator const& collision,
                              soa::Join<aod::JetMcCollisions, aod::JMcCollisionPIs> const&,
                              soa::Join<aod::McCollisions, aod::HepMCXSections> const&,
+                             aod::JBCs const&, 
                              soa::Join<aod::ChargedMCDetectorLevelJets, aod::ChargedMCDetectorLevelJetConstituents> const& mcdjets,
                              soa::Filtered<soa::Join<aod::JetTracks, aod::JTrackExtras, aod::JTrackPIs>> const& tracks,
                              soa::Filtered<aod::JetParticles> const& mcparticles)
@@ -1531,6 +1532,7 @@ struct JetFinderQATask {
 
     registry.fill(HIST("h_collisions_ntracks"), tracks.size(), eventWeight);
     registry.fill(HIST("h2_centrality_ntracks"), collision.centFT0M(), tracks.size(), eventWeight);
+    registry.fill(HIST("h2_runnumber_ntracks"), (collision.bc_as<aod::JBCs>().runNumber()) % 1000, tracks.size(), eventWeight);
     registry.fill(HIST("h_collisions_njets"), mcdjets.size(), eventWeight);
     registry.fill(HIST("h2_centrality_njets"), collision.centFT0M(), mcdjets.size(), eventWeight);
     registry.fill(HIST("h2_ntracks_rho"), tracks.size(), collision.rho(), eventWeight);
