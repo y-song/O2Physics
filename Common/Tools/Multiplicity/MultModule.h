@@ -58,7 +58,7 @@ static constexpr int nParameters = 1;
 static const std::vector<std::string> tableNames{
   // multiplicity subcomponent
   "FV0Mults",
-  "FV0AOuterMults",
+  "FITExtraMults",
   "FT0Mults",
   "FDDMults",
   "ZDCMults",
@@ -97,12 +97,16 @@ static const std::vector<std::string> tableNames{
   "CentMFTs",
   "BCCentFT0Ms",
   "BCCentFT0As",
-  "BCCentFT0Cs"};
+  "BCCentFT0Cs",
+  "CentFT0MLightIonAnchorCols",
+  "CentFT0MLightIonAnchorBCs"};
 
-static constexpr int nTablesConst = 39;
+static constexpr int nTablesConst = 41;
 
 static const std::vector<std::string> parameterNames{"enable"};
 static const int defaultParameters[nTablesConst][nParameters]{
+  {-1},
+  {-1},
   {-1},
   {-1},
   {-1},
@@ -166,25 +170,27 @@ enum tableIndex { kFV0Mults,       // standard
                   kMultsGlobal,    // requires track selection task
 
                   // centrality subcomponent
-                  kCentRun2V0Ms,      // Run 2
-                  kCentRun2V0As,      // Run 2
-                  kCentRun2SPDTrks,   // Run 2
-                  kCentRun2SPDClss,   // Run 2
-                  kCentRun2CL0s,      // Run 2
-                  kCentRun2CL1s,      // Run 2
-                  kCentFV0As,         // standard Run 3
-                  kCentFT0Ms,         // standard Run 3
-                  kCentFT0As,         // standard Run 3
-                  kCentFT0Cs,         // standard Run 3
-                  kCentFT0CVariant1s, // standard Run 3
-                  kCentFT0CVariant2s, // standard Run 3
-                  kCentFDDMs,         // standard Run 3
-                  kCentNTPVs,         // standard Run 3
-                  kCentNGlobals,      // requires track selection task
-                  kCentMFTs,          // requires MFT task
-                  kBCCentFT0Ms,       // bc centrality
-                  kBCCentFT0As,       // bc centrality
-                  kBCCentFT0Cs,       // bc centrality
+                  kCentRun2V0Ms,               // Run 2
+                  kCentRun2V0As,               // Run 2
+                  kCentRun2SPDTrks,            // Run 2
+                  kCentRun2SPDClss,            // Run 2
+                  kCentRun2CL0s,               // Run 2
+                  kCentRun2CL1s,               // Run 2
+                  kCentFV0As,                  // standard Run 3
+                  kCentFT0Ms,                  // standard Run 3
+                  kCentFT0As,                  // standard Run 3
+                  kCentFT0Cs,                  // standard Run 3
+                  kCentFT0CVariant1s,          // standard Run 3
+                  kCentFT0CVariant2s,          // standard Run 3
+                  kCentFDDMs,                  // standard Run 3
+                  kCentNTPVs,                  // standard Run 3
+                  kCentNGlobals,               // requires track selection task
+                  kCentMFTs,                   // requires MFT task
+                  kBCCentFT0Ms,                // bc centrality
+                  kBCCentFT0As,                // bc centrality
+                  kBCCentFT0Cs,                // bc centrality
+                  kCentFT0MLightIonAnchorCols, // light ion specific
+                  kCentFT0MLightIonAnchorBCs,  // light ion specific
                   kNTables };
 
 struct products : o2::framework::ProducesGroup {
@@ -233,6 +239,8 @@ struct products : o2::framework::ProducesGroup {
   o2::framework::Produces<aod::BCCentFT0As> bcCentFT0A;
   o2::framework::Produces<aod::BCCentFT0Cs> bcCentFT0C;
   o2::framework::Produces<aod::BCCentFT0Ms> bcCentFT0M;
+  o2::framework::Produces<aod::CentFT0MLightIonAnchorCols> centFT0MLightIonAnchorCol;
+  o2::framework::Produces<aod::CentFT0MLightIonAnchorBCs> centFT0MLightIonAnchorBC;
 
   //__________________________________________________
   // centrality tables per BC
@@ -318,6 +326,12 @@ struct standardConfigurables : o2::framework::ConfigurableGroup {
   o2::framework::Configurable<float> maxPtGlobalTrack{"maxPtGlobalTrack", 1e+10, "max. pT for global tracks"};
   o2::framework::Configurable<int> minNclsITSGlobalTrack{"minNclsITSGlobalTrack", 5, "min. number of ITS clusters for global tracks"};
   o2::framework::Configurable<int> minNclsITSibGlobalTrack{"minNclsITSibGlobalTrack", 1, "min. number of ITSib clusters for global tracks"};
+
+  // MFT track counter configurables
+  o2::framework::Configurable<int> minNclsMFTTrack{"minNclsMFTTrack", 5, "min. number of MFT clusters for MFT tracks"};
+  o2::framework::Configurable<float> maxDCAxyToPVMFTTrack{"maxDCAxyToPVMFTTrack", 2.0f, "max DCAxy to PV for MFT tracks (cm)"};
+  o2::framework::Configurable<float> minEtaMFTTrack{"minEtaMFTTrack", -3.9f, "min. pseudorapidity for MFT tracks (nominal: -3.6)"};
+  o2::framework::Configurable<float> maxEtaMFTTrack{"maxEtaMFTTrack", -2.0f, "max. pseudorapidity for MFT tracks (nominal: -2.45)"};
 
   // ccdb information
   o2::framework::Configurable<std::string> ccdbPathVtxZ{"ccdbPathVtxZ", "Centrality/Calibration", "The CCDB path for vertex-Z calibration"};
@@ -437,6 +451,8 @@ class MultModule
 
   CalibrationInfo fv0aInfo = CalibrationInfo("FV0");
   CalibrationInfo ft0mInfo = CalibrationInfo("FT0");
+  CalibrationInfo ft0mColInfo = CalibrationInfo("FT0LightIonAncCol");
+  CalibrationInfo ft0mBcInfo = CalibrationInfo("FT0LightIonAncBc");
   CalibrationInfo ft0aInfo = CalibrationInfo("FT0A");
   CalibrationInfo ft0cInfo = CalibrationInfo("FT0C");
   CalibrationInfo ft0cVariant1Info = CalibrationInfo("FT0Cvar1");
@@ -988,7 +1004,7 @@ class MultModule
     int nTracks = 0;
 
     for (const auto& track : mfttracks) {
-      if (track.nClusters() >= 5) { // hardcoded for now
+      if (track.nClusters() >= internalOpts.minNclsMFTTrack.value) {
         nAllTracks++;
       }
     }
@@ -996,13 +1012,13 @@ class MultModule
     if (retracks.size() > 0) {
       for (const auto& retrack : retracks) {
         auto track = retrack.mfttrack();
-        if (track.nClusters() < 5) {
+        if (track.nClusters() < internalOpts.minNclsMFTTrack.value) {
           continue; // min cluster requirement
         }
-        if ((track.eta() > -2.0f) && (track.eta() < -3.9f)) {
+        if (track.eta() > internalOpts.maxEtaMFTTrack.value || track.eta() < internalOpts.minEtaMFTTrack.value) {
           continue; // too far to be of true interest
         }
-        if (std::abs(retrack.bestDCAXY()) > 2.0f) {
+        if (std::abs(retrack.bestDCAXY()) > internalOpts.maxDCAxyToPVMFTTrack.value) {
           continue; // does not point to PV properly
         }
         nTracks++;
@@ -1206,6 +1222,8 @@ class MultModule
 
       fv0aInfo.mCalibrationStored = false;
       ft0mInfo.mCalibrationStored = false;
+      ft0mColInfo.mCalibrationStored = false;
+      ft0mBcInfo.mCalibrationStored = false;
       ft0aInfo.mCalibrationStored = false;
       ft0cInfo.mCalibrationStored = false;
       ft0cVariant1Info.mCalibrationStored = false;
@@ -1243,6 +1261,10 @@ class MultModule
           getccdb(fv0aInfo, internalOpts.generatorName);
         if (internalOpts.mEnabledTables[kCentFT0Ms] || internalOpts.mEnabledTables[kBCCentFT0Ms])
           getccdb(ft0mInfo, internalOpts.generatorName);
+        if (internalOpts.mEnabledTables[kCentFT0MLightIonAnchorCols])
+          getccdb(ft0mColInfo, internalOpts.generatorName);
+        if (internalOpts.mEnabledTables[kCentFT0MLightIonAnchorBCs])
+          getccdb(ft0mBcInfo, internalOpts.generatorName);
         if (internalOpts.mEnabledTables[kCentFT0As] || internalOpts.mEnabledTables[kBCCentFT0As])
           getccdb(ft0aInfo, internalOpts.generatorName);
         if (internalOpts.mEnabledTables[kCentFT0Cs] || internalOpts.mEnabledTables[kBCCentFT0Cs])
@@ -1280,7 +1302,8 @@ class MultModule
       internalOpts.mEnabledTables[kCentFDDMs] ||
       internalOpts.mEnabledTables[kCentNTPVs] || internalOpts.mEnabledTables[kCentNGlobals] ||
       internalOpts.mEnabledTables[kCentMFTs] || internalOpts.mEnabledTables[kBCCentFT0Ms] ||
-      internalOpts.mEnabledTables[kBCCentFT0As] || internalOpts.mEnabledTables[kBCCentFT0Cs]) {
+      internalOpts.mEnabledTables[kBCCentFT0As] || internalOpts.mEnabledTables[kBCCentFT0Cs] ||
+      internalOpts.mEnabledTables[kCentFT0MLightIonAnchorCols] || internalOpts.mEnabledTables[kCentFT0MLightIonAnchorBCs]) {
       // check and update centrality calibration objects for Run 3
       const auto& firstbc = bcs.begin();
       ConfigureCentralityRun3(ccdb, metadataInfo, firstbc);
@@ -1326,6 +1349,10 @@ class MultModule
           populateTable(cursors.centFV0A, fv0aInfo, mults[iEv].multFV0AZeq, isInelGt0);
         if (internalOpts.mEnabledTables[kCentFT0Ms])
           populateTable(cursors.centFT0M, ft0mInfo, mults[iEv].multFT0AZeq + mults[iEv].multFT0CZeq, isInelGt0);
+        if (internalOpts.mEnabledTables[kCentFT0Ms])
+          populateTable(cursors.centFT0MLightIonAnchorCol, ft0mColInfo, mults[iEv].multFT0AZeq + mults[iEv].multFT0CZeq, isInelGt0);
+        if (internalOpts.mEnabledTables[kCentFT0Ms])
+          populateTable(cursors.centFT0MLightIonAnchorBC, ft0mBcInfo, mults[iEv].multFT0AZeq + mults[iEv].multFT0CZeq, isInelGt0);
         if (internalOpts.mEnabledTables[kCentFT0As])
           populateTable(cursors.centFT0A, ft0aInfo, mults[iEv].multFT0AZeq, isInelGt0);
         if (internalOpts.mEnabledTables[kCentFT0Cs])
