@@ -10,6 +10,7 @@ github_conf/
 .cache
 *.root
 *.log
+dpl-config.json
 logs/
 
 #VScode
