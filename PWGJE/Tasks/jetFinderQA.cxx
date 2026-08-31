@@ -106,9 +106,6 @@ struct JetFinderQATask {
   std::vector<double> jetPtBins;
   std::vector<double> jetPtBinsRhoAreaSub;
 
-  std::vector<fastjet::PseudoJet> inputParticles;
-  o2::framework::Service<o2::framework::O2DatabasePDG> pdgDatabase;
-
   void init(o2::framework::InitContext&)
   {
     eventSelectionBits = jetderiveddatautilities::initialiseEventSelectionBits(static_cast<std::string>(eventSelections));
