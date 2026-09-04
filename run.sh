@@ -1,7 +1,7 @@
 # OPTION_TUTORIAL="-b --configuration json://myConfig.json"
 # o2-analysistutorial-mm-my-example-task ${OPTION_TUTORIAL}
 
-OPTION="-b --configuration json://747964_config.json"
+OPTION="-b --configuration json://751191_config.json"
 o2-analysis-trackselection ${OPTION} | \
 o2-analysis-propagationservice ${OPTION} | \
 o2-analysis-event-selection-service ${OPTION} | \

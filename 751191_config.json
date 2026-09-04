@@ -1,7 +1,6 @@
 {
     "internal-dpl-clock": "",
     "internal-dpl-aod-reader": {
-        "aod-file-private": "559613\/AO2D_013.root",
         "aod-max-io-rate": "0",
         "time-limit": "0",
         "orbit-offset-enumeration": "0",
@@ -759,7 +758,7 @@
         },
         "trackEtaMin": "-0.899999976",
         "trackEtaMax": "0.899999976",
-        "trackPtMin": "0.150000006",
+        "trackPtMin": "0.15",
         "trackPtMax": "100",
         "trackSelections": "globalTracks",
         "pTHatMaxMCD": "999",
