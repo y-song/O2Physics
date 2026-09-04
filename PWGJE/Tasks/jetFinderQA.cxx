@@ -445,6 +445,7 @@ struct JetFinderQATask {
       registry.add("h_particle_hepmcstatuscode", "particle hep mc status code;particle hep mc status code;entries", {HistType::kTH1D, {{210, 0.0, 210.0}}});
       registry.add("h_particle_process", "particle process;particle process;entries", {HistType::kTH1D, {{50, 0.0, 50.0}}});
       registry.add("h_particle_producedbygenerator", "particle producedByGenerator status;particle producedByGenerator status;entries", {HistType::kTH1D, {{2, 0.0, 2}}});
+      registry.add("h_nparticles", "N(particles);", {HistType::kTH1I, {nTracksAxis}});
 
       registry.add("h_particle_primary_pdgcode", "primary particle pdgcode;primary particle pdgcode;entries", {HistType::kTH1D, {{3000, 0.0, 3000.0}}});
       registry.add("h_particle_primary_genstatuscode", "primary particle gen status code;primary particle gen status code;entries", {HistType::kTH1D, {{420, -210.0, 210.0}}});
@@ -1590,6 +1591,7 @@ struct JetFinderQATask {
     int nParticlesPrimary = 0;
     if (collision.has_mcCollision()) {
       auto particleMcCollision = mcparticles.sliceBy(ParticlesPerMCPCollision, collision.mcCollisionId());
+      registry.fill(HIST("h_nparticles"), particleMcCollision.size());
       for (auto const& mcparticle : particleMcCollision) {
         registry.fill(HIST("h_particle_pdgcode"), mcparticle.pdgCode(), eventWeight);
         registry.fill(HIST("h_particle_genstatuscode"), mcparticle.getGenStatusCode(), eventWeight);
