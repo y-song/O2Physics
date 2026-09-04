@@ -12,6 +12,10 @@
 // Contact: iarsene@cern.ch, i.c.arsene@fys.uio.no
 //   Configurable workflow for running several DQ or other PWG analyses
 
+// Included verbatim by the *_workflowSpec.cxx variants and precompiled into
+// TableReaderWithAssocPCH; without the guard the two collide.
+#pragma once
+
 #include "PWGDQ/Core/AnalysisCompositeCut.h"
 #include "PWGDQ/Core/AnalysisCut.h"
 #include "PWGDQ/Core/CutsLibrary.h"
@@ -1376,7 +1380,7 @@ struct AnalysisSameEventPairing {
 
   // option for TR pair fill
   Configurable<bool> fConfigTRPairs{"cfgFillTRPairs", false, "If true, fill Track rotation pairs"};
-  Configurable<int> fConfigNRotations{"cfgNRotations", 20, "Number of rotations for track rotation method"};
+  Configurable<int> fConfigNRotations{"cfgNRotations", 3, "Number of rotations for event plane preserving track rotation method, only 1 or 3 are supported"};
 
   struct : ConfigurableGroup {
     Configurable<std::string> url{"ccdb-url", "http://alice-ccdb.cern.ch", "url of the ccdb repository"};
@@ -2080,11 +2084,12 @@ struct AnalysisSameEventPairing {
             dileptonInfoList(event.collisionId(), event.posX(), event.posY(), event.posZ());
           }
           if (fConfigOptions.polarTables.value) {
-            dileptonPolarList(VarManager::fgValues[VarManager::kCosThetaHE], VarManager::fgValues[VarManager::kPhiHE], VarManager::fgValues[VarManager::kPhiTildeHE],
+            dileptonPolarList(VarManager::fgValues[VarManager::kMass], VarManager::fgValues[VarManager::kPt], VarManager::fgValues[VarManager::kEta], t1.sign() + t2.sign(), twoTrackFilter,
+                              VarManager::fgValues[VarManager::kCosThetaHE], VarManager::fgValues[VarManager::kPhiHE], VarManager::fgValues[VarManager::kPhiTildeHE],
                               VarManager::fgValues[VarManager::kCosThetaCS], VarManager::fgValues[VarManager::kPhiCS], VarManager::fgValues[VarManager::kPhiTildeCS],
                               VarManager::fgValues[VarManager::kCosThetaPP], VarManager::fgValues[VarManager::kPhiPP], VarManager::fgValues[VarManager::kPhiTildePP],
                               VarManager::fgValues[VarManager::kCosThetaRM],
-                              VarManager::fgValues[VarManager::kCosThetaStarTPC], VarManager::fgValues[VarManager::kCosThetaStarFT0A], VarManager::fgValues[VarManager::kCosThetaStarFT0C]);
+                              VarManager::fgValues[VarManager::kCosThetaStarTPC], VarManager::fgValues[VarManager::kCosThetaStarFT0A], VarManager::fgValues[VarManager::kCosThetaStarFT0C], VarManager::fgValues[VarManager::kCosThetaStarRandom]);
             dileptonEventInfoList(VarManager::fgValues[VarManager::kCentFT0C], VarManager::fgValues[VarManager::kVtxZ], VarManager::fgValues[VarManager::kVtxNcontrib], VarManager::fgValues[VarManager::kRandomPsi2], VarManager::fgValues[VarManager::kPsi2A], VarManager::fgValues[VarManager::kPsi2B], VarManager::fgValues[VarManager::kPsi2C]);
           }
           if constexpr (trackHasCov && TTwoProngFitter) {
@@ -2444,14 +2449,26 @@ struct AnalysisSameEventPairing {
                   }
                 }
                 if (sign1 * sign2 < 0) {
-                  for (int i = 0; i < fConfigNRotations.value; i++) {
-                    VarManager::FillPairRotation<TPairType, TTrackFillMap>(t1, t2);
+                  if (fConfigNRotations.value == 1) {
+                    VarManager::FillPairRotation<TPairType, TTrackFillMap>(t1, t2, fConfigNRotations.value);
                     if constexpr (TPairType == VarManager::kDecayToEE) {
                       fHistMan->FillHistClass(Form("PairsBarrelTRPM_%s", fTrackCuts[icut].Data()), dqtablereader_helpers::varValues());
                       if (isAmbiExtra) {
                         fHistMan->FillHistClass(Form("PairsBarrelTRPM_ambiguousextra_%s", fTrackCuts[icut].Data()), dqtablereader_helpers::varValues());
                       }
                     }
+                  } else if (fConfigNRotations.value == 3) {
+                    for (int irot = 1; irot <= fConfigNRotations.value; irot++) {
+                      VarManager::FillPairRotation<TPairType, TTrackFillMap>(t1, t2, irot);
+                      if constexpr (TPairType == VarManager::kDecayToEE) {
+                        fHistMan->FillHistClass(Form("PairsBarrelTRPM_%s", fTrackCuts[icut].Data()), dqtablereader_helpers::varValues());
+                        if (isAmbiExtra) {
+                          fHistMan->FillHistClass(Form("PairsBarrelTRPM_ambiguousextra_%s", fTrackCuts[icut].Data()), dqtablereader_helpers::varValues());
+                        }
+                      }
+                    }
+                  } else {
+                    LOGF(fatal, "Unsupported number of rotations: %d, only 1 and 3 are supported", fConfigNRotations.value);
                   }
                 }
               }
@@ -3496,7 +3513,7 @@ struct AnalysisAsymmetricPairing {
 
   // Template function to run same event pairing with asymmetric pairs (e.g. kaon-pion)
   template <bool TTwoProngFitter, int TPairType, uint32_t TEventFillMap, uint32_t TTrackFillMap, typename TEvents, typename TTrackAssocs, typename TTracks>
-  void runAsymmetricPairing(TEvents const& events, Preslice<TTrackAssocs>& preslice, TTrackAssocs const& assocs, TTracks const& /*tracks*/)
+  void runAsymmetricPairing(TEvents const& events, Preslice<TTrackAssocs>& preslice, TTrackAssocs const& /*assocs*/, TTracks const& /*tracks*/)
   {
     fPairCount.clear();
 
@@ -3509,8 +3526,23 @@ struct AnalysisAsymmetricPairing {
 
     int sign1 = 0;
     int sign2 = 0;
-    ditrackList.reserve(assocs.size());
-    ditrackExtraList.reserve(assocs.size());
+
+    // Reserve capacity for the output tables
+    int64_t reserveSize = 0;
+    for (auto const& event : events) {
+      if (!event.isEventSelected_bit(0)) {
+        continue;
+      }
+      if (fConfigRemoveCollSplittingCandidates.value && event.isEventSelected_bit(2)) {
+        continue;
+      }
+      auto groupedLegAAssocs = legACandidateAssocs.sliceBy(preslice, event.globalIndex());
+      auto groupedLegBAssocs = legBCandidateAssocs.sliceBy(preslice, event.globalIndex());
+      reserveSize += static_cast<int64_t>(groupedLegAAssocs.size()) *
+                     static_cast<int64_t>(groupedLegBAssocs.size());
+    }
+    ditrackList.reserve(reserveSize);
+    ditrackExtraList.reserve(reserveSize);
 
     constexpr bool trackHasCov = ((TTrackFillMap & VarManager::ObjTypes::TrackCov) > 0 || (TTrackFillMap & VarManager::ObjTypes::ReducedTrackBarrelCov) > 0);
 
