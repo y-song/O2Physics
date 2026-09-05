@@ -1,7 +1,6 @@
 {
     "internal-dpl-clock": "",
     "internal-dpl-aod-reader": {
-        "aod-file-private": "559613\/AO2D_013.root",
         "aod-max-io-rate": "0",
         "time-limit": "0",
         "orbit-offset-enumeration": "0",
@@ -517,6 +516,7 @@
         "processMonteCarloWithPID": "false"
     },
     "track-selection": {
+        "trackSelections": "kinematicsOnly",
         "isRun3": "true",
         "produceTable": "1",
         "produceFBextendedTable": "-1",
